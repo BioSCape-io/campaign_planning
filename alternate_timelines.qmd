@@ -1,9 +1,24 @@
-#flight sims data stuff
+---
+title: "Alternate flight timelines"
+author: "Brian Maitner"
+date: "3/30/2023"
+output:
+  html_document:
+    code_folding: hide
+---
 
-#23 October - 4 December (6 weeks)
-#23 October - 11 December (4 weeks)
 
-```{r,collapse=TRUE,eval=FALSE}
+* Option 1: 23 October - 4 December (6 weeks)
+* Option 2: 13 October - 15 November (4.7 weeks)
+
+```{r,collapse=TRUE, eval=TRUE}
+#| echo: false
+#| message: false
+#| warning: false
+#| code-fold: true
+#| code-summary: "Show the code"
+
+
 source("R/flight_sims_for_specific_days.R")
 
 
@@ -16,7 +31,7 @@ d4 <- flight_sim_specific_days(start_day = as_date("2023-10-23"),
                                use_julian = TRUE)
 
 
-n15 <- flight_sim_specific_days(start_day = as_date("2023-10-23"),
+n15 <- flight_sim_specific_days(start_day = as_date("2023-10-13"),
                                end_day = as_date("2023-11-15"),
                                quality_threshold = 0.05, 
                                max_wind_speed = 5,
@@ -43,7 +58,18 @@ n15 %>%
 
 ```
 
-```{r,eval=FALSE}
+```{r, eval=TRUE}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig.cap: "Figure 1. Violin plot showing the distributions of the number of boxes flown for each timeline."
+#| fig.width: 20
+#| fig.height: 14
+#| strip.white: TRUE
+#| code-fold: true
+#| code-summary: "Show the code"
+
+
 
 paste("median" ,median(d4_sum$sites_done)," sites done with a Dec 4 end date")
 paste("median",median(n15_sum$sites_done),"sites done with a Nov 15 end date")
@@ -65,7 +91,18 @@ data.frame(end_date = "12_04",
   
 ```
 
-```{r,eval=FALSE}
+```{r,eval=TRUE}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig.cap: "Figure 2. Fraction of simulations in which the flight box would be flown."
+#| fig.width: 20
+#| fig.height: 14
+#| strip.white: TRUE
+#| code-fold: true
+#| code-summary: "Show the code"
+
+
 
 #which plots do we get/miss?
 
