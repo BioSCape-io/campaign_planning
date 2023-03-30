@@ -11,10 +11,11 @@ output:
 * Option 1: 23 October - 4 December (6 weeks)
 * Option 2: 13 October - 15 November (4.7 weeks)
 
-```{r,collapse=TRUE, eval=TRUE}
-#| echo: false
+```{r fig one prep}
+#| echo: true
 #| message: false
 #| warning: false
+#| include: false
 #| code-fold: true
 #| code-summary: "Show the code"
 
@@ -58,7 +59,7 @@ n15 %>%
 
 ```
 
-```{r, eval=TRUE}
+```{r fig one plot}
 #| echo: false
 #| message: false
 #| warning: false
@@ -68,8 +69,6 @@ n15 %>%
 #| strip.white: TRUE
 #| code-fold: true
 #| code-summary: "Show the code"
-
-
 
 paste("median" ,median(d4_sum$sites_done)," sites done with a Dec 4 end date")
 paste("median",median(n15_sum$sites_done),"sites done with a Nov 15 end date")
@@ -91,7 +90,7 @@ data.frame(end_date = "12_04",
   
 ```
 
-```{r,eval=TRUE}
+```{r fig two}
 #| echo: false
 #| message: false
 #| warning: false
@@ -106,7 +105,7 @@ data.frame(end_date = "12_04",
 
 #which plots do we get/miss?
 
-boxes <- st_read("data/flight_planning/20221026_flightboxes.gpkg")
+boxes <- st_read("data/flight_planning/20221026_flightboxes.gpkg",quiet=TRUE)
 boxes$id <- 1:20
 
 d4%>%
