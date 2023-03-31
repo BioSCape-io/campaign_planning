@@ -73,9 +73,9 @@ n15 %>%
 paste("median" ,median(d4_sum$sites_done)," sites done with a Dec 4 end date")
 paste("median",median(n15_sum$sites_done),"sites done with a Nov 15 end date")
 
-data.frame(end_date = "12_04",
+data.frame(end_date = "Dec. 4",
            d4_sum) %>%
-  bind_rows(data.frame(end_date = "11_15",
+  bind_rows(data.frame(end_date = "Nov. 15",
                        n15_sum)
   ) %>%
   mutate(pct_done = (sites_done/20)*100)%>%
@@ -83,8 +83,9 @@ data.frame(end_date = "12_04",
   geom_violin()+
   geom_boxplot(width=0.1,fill="light grey")+
   stat_summary(fun.y=mean, geom="point", shape=23, size=2,fill="red")+
-  ylab("Pct. boxes flown")+
-  xlab("End Date")
+  ylab("Percent of boxes flown")+
+  xlab("End Date")+
+  theme(text = element_text(size = 30))  
 
 
   
@@ -100,7 +101,6 @@ data.frame(end_date = "12_04",
 #| strip.white: TRUE
 #| code-fold: true
 #| code-summary: "Show the code"
-
 
 
 #which plots do we get/miss?
@@ -126,14 +126,18 @@ d4%>%
     ggplot()+
     geom_sf(mapping = aes(fill=fraction))+
     scale_fill_continuous(limits=c(0.3,1))+
-    ggtitle("Dec. 4")->dplot
+    ggtitle("Dec. 4")+
+    theme(text = element_text(size = 30),
+          legend.text = element_text(size = 20) )  ->dplot
   
   boxes %>%
     inner_join(n15box,by = c("id" = "box_id"))%>%
     ggplot()+
     geom_sf(mapping = aes(fill=fraction))+
     scale_fill_continuous(limits=c(.3,1))+
-    ggtitle("Nov. 15")->nplot
+    ggtitle("Nov. 15")+
+    theme(text = element_text(size = 30),
+          legend.text = element_text(size = 20))  ->nplot
   
 
 
@@ -141,9 +145,14 @@ d4%>%
 library(ggpmisc)
 library(ggpubr)  
   
-ggarrange(dplot,nplot,common.legend = TRUE,ncol = 1)
+
+library(patchwork)
+combined <- dplot + nplot & theme(legend.position = "bottom",
+                                  axis.text = element_text(size = 20),
+                                  legend.text = element_text(size = 10),
+                                  text = element_text(size=20))
+
+combined + plot_layout(guides = "collect",
+                       ncol = 1)
 
 ```
-
-
-
