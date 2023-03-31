@@ -78,7 +78,8 @@ data.frame(end_date = "Dec. 4",
   bind_rows(data.frame(end_date = "Nov. 15",
                        n15_sum)
   ) %>%
-  mutate(pct_done = (sites_done/20)*100)%>%
+  mutate(pct_done = (sites_done/20)*100) %>%
+  mutate(end_date = fct_relevel(end_date,c("Nov. 15", "Dec. 4"))) %>%
   ggplot(mapping = aes(x=end_date,y=pct_done))+
   geom_violin()+
   geom_boxplot(width=0.1,fill="light grey")+
@@ -147,10 +148,11 @@ library(ggpubr)
   
 
 library(patchwork)
-combined <- dplot + nplot & theme(legend.position = "bottom",
+combined <-  nplot +dplot & theme(legend.position = "bottom",
                                   axis.text = element_text(size = 20),
-                                  legend.text = element_text(size = 10),
-                                  text = element_text(size=20))
+                                  legend.text = element_text(size = 20),
+                                  text = element_text(size=20),
+                                  legend.key.size = unit(x = 2,units = "cm"))
 
 combined + plot_layout(guides = "collect",
                        ncol = 1)
