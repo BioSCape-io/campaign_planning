@@ -263,7 +263,7 @@ names(k_raster_domain)<-"cluster"
     as.factor() %>%
     as.data.frame(xy = TRUE) %>%
     na.omit()%>%
-    mutate(cluster = as.factor(label))-> k_df_domain_masked  
+    mutate(cluster = as.factor(cluster))-> k_df_domain_masked  
 
 
 #make a data frame of the focal areas
@@ -271,7 +271,7 @@ k_raster_domain %>%
   as.factor() %>%
   as.data.frame(xy = TRUE) %>%
   na.omit()%>%
-  mutate(cluster = as.factor(label))-> k_df_domain
+  mutate(cluster = as.factor(cluster))-> k_df_domain
 
 #plot the clusters
 ggplot(data = k_df_domain) +
@@ -769,7 +769,7 @@ names(k_raster_fynbos)<-"cluster"
     as.factor() %>%
     as.data.frame(xy = TRUE) %>%
     na.omit()%>%
-    mutate(cluster = as.factor(label))-> k_df_fynbos_masked  
+    mutate(cluster = as.factor(cluster))-> k_df_fynbos_masked  
 
 
 #make a data frame of the focal areas
@@ -777,7 +777,7 @@ k_raster_fynbos %>%
   as.factor() %>%
   as.data.frame(xy = TRUE) %>%
   na.omit()%>%
-  mutate(cluster = as.factor(label))-> k_df_fynbos
+  mutate(cluster = as.factor(cluster))-> k_df_fynbos
 
 #plot the clusters
 ggplot(data = k_df_fynbos) +
@@ -911,10 +911,15 @@ ggplot(data = k_df_w_climate,
 #| echo: FALSE
 #| message: false
 #| warning: false
-#| fig-cap: "Figure 15. Sampling options within parks.  Park boundaries are denoted by black lines, sampling locations are colored by cluster. Additional polygons delimited current flight plans (white) and areas of interest indicated by BIOSCAPE PIs (brown)."
+#| fig-cap: "Figure 15. Sampling options within parks.  Park boundaries are denoted by black lines, sampling locations are colored by cluster. Additional polygons delimited current flight plans (white) and areas of interest indicated by BIOSCAPE PIs (brown). Markers represent proposed vegetation sampling locations."
 #| fig.width: 10
 #| fig.height: 10
 #| strip.white: TRUE
+
+
+#get proposed sites
+proposed_sites <- st_read("data/manual_downloads/proposed_sites/BioSCape_sites_19May2023_NoCentralMountains.kml.kml")
+
 
 #Pull in other bioscape layers
 
@@ -984,7 +989,11 @@ leaflet(data = fynbos_cluster_polys_wgs84) %>%
                 st_zm(drop = T, what = "ZM"),
                   stroke = TRUE,
                   color = "brown",
-                  group = "Requests")%>%  
+                  group = "Requests")%>%
+      # addCircleMarkers(data = proposed_sites,
+      #            group = "Plots",stroke = FALSE,weight = 0,fillColor = "green") %>%
+      addMarkers(data = proposed_sites,
+                 group = "Plots") %>%
     addMouseCoordinates() %>%
     #addImageQuery(sampling_options_wgs84, type="mousemove", layerId = "park_name") %>%
   leaflet::addLegend(position = "bottomright",
@@ -995,7 +1004,7 @@ leaflet(data = fynbos_cluster_polys_wgs84) %>%
             labels = unique(fynbos_cluster_polys_wgs84$cluster)) %>%
     addLayersControl(
     baseGroups = c("World Imagery","NatGeo"),
-    overlayGroups = c("Park","Flights","Cluster","Requests"),
+    overlayGroups = c("Park","Flights","Cluster","Requests","Plots"),
     options = layersControlOptions(collapsed = FALSE),
     position = "topright")
 
@@ -1094,4 +1103,167 @@ sampling_options %>%
 
 ```
 
+## Proposed Sites
 
+### Geographic space
+```{r,eval=TRUE,echo=FALSE}
+#| echo: FALSE
+#| message: false
+#| warning: false
+#| fig-cap: "Fig. "
+#| fig.width: 10
+#| fig.height: 5
+#| strip.white: TRUE
+
+# Load proposed sites
+
+proposed_sites <- st_read("data/manual_downloads/proposed_sites/BioSCape_sites_19May2023_NoCentralMountains.kml.kml")
+
+ggplot()+
+  geom_sf(data = domain, col = "black")+
+  geom_sf(data = sampling_options,fill="dark grey",col = "dark grey")+
+  geom_sf(data = acceptable_sites, fill="red", col = "red")+
+  geom_sf(data = proposed_sites %>%
+               st_transform(crs = crs(domain)))
+
+
+```
+
+### Climate space
+```{r,eval=TRUE,echo=FALSE}
+#| echo: FALSE
+#| message: false
+#| warning: false
+#| fig-cap: "Figure. Mean Annual Temperature vs. Mean Annual Precipitation.  Colored dots represent clusters in the focal sites and grey areas represent the entire domain. Black dots represent proposed sampling locations."
+#| fig.width: 10
+#| fig.height: 5
+#| strip.white: TRUE
+
+#Get climate data at focal sites
+  clim_vals_sites <-
+    terra::extract(x = c(climate,
+                         soil_depth,
+                         #dist_from_water,
+                         drought),
+                   y = vect(st_transform(x = proposed_sites,
+                                         crs = crs(dist_from_water))),
+                   cells=TRUE,
+                   xy=TRUE)%>%
+    dplyr::select(-ID) %>%
+    na.omit() 
+
+
+
+#temp and precip
+site_temp_vs_precip <-
+ggplot(data = k_df_w_climate,
+       mapping = aes(x=CHELSA_bio10_01_V1.2,
+                     y = CHELSA_bio10_12_V1.2
+       ))+
+  geom_point(col = "grey")+
+  geom_point(data = k_df_masked_w_climate,
+             mapping = aes(x=CHELSA_bio10_01_V1.2,
+                           y = CHELSA_bio10_12_V1.2,
+                           col = cluster))+
+  xlab("Mean Annual Temperature")+
+  ylab("Mean Annual Precipitation")+
+  geom_point(data = clim_vals_sites,
+             mapping = aes(x=CHELSA_bio10_01_V1.2,
+                           y = CHELSA_bio10_12_V1.2),
+             shape=18)
+
+ggsave(filename = "figures/site_location_temp_v_precip.tif",
+       plot = site_temp_vs_precip,
+       device = "tiff",
+       dpi = 300,
+       width = 10,
+       height = 5,
+       units="in")
+
+site_temp_vs_precip
+
+
+
+```
+
+```{r,eval=TRUE,echo=FALSE}
+#| echo: FALSE
+#| message: false
+#| warning: false
+#| fig-cap: "Figure. Precipitation Seasonality vs. Soil Depth.  Colored dots represent clusters in the focal sites and grey areas represent the entire domain. Black dots represent proposed sampling locations."
+#| fig.width: 10
+#| fig.height: 5
+#| strip.white: TRUE
+
+#season and soil
+
+site_seasonality_vs_soil <-
+ggplot(data = k_df_w_climate,
+       mapping = aes(x=CHELSA_bio10_15_V1.2,
+                     y = mean_0_200
+       ))+
+  geom_point(col = "grey")+
+  geom_point(data = k_df_masked_w_climate,
+             mapping = aes(x=CHELSA_bio10_15_V1.2,
+                           y = mean_0_200,
+                           col = cluster))+
+  xlab("Seasonality")+
+  ylab("Soil Depth")+
+  geom_point(data = clim_vals_sites,
+             mapping = aes(x=CHELSA_bio10_15_V1.2,
+                           y = mean_0_200),
+             shape=18)
+
+ggsave(filename = "figures/site_location_precip_seasonality_v_soil_depth.tif",
+       plot = site_seasonality_vs_soil,
+       device = "tiff",
+       dpi = 300,
+       width = 10,
+       height = 5,
+       units="in")
+
+site_seasonality_vs_soil
+
+```
+
+```{r,eval=TRUE,echo=FALSE}
+#| echo: FALSE
+#| message: false
+#| warning: false
+#| fig-cap: "Figure 14. Precipitation vs. Drought.  Colored dots represent clusters in the focal sites and grey areas represent the entire domain. Black dots represent proposed sampling locations."
+#| fig.width: 10
+#| fig.height: 5
+#| strip.white: TRUE
+
+
+#Precipitation and droughts
+
+site_seasonality_vs_drought <-
+ggplot(data = k_df_w_climate,
+       mapping = aes(x=CHELSA_bio10_12_V1.2,
+                     y =sum
+       ))+
+  geom_point(col = "grey")+
+  geom_point(data = k_df_masked_w_climate,
+             mapping = aes(x=CHELSA_bio10_12_V1.2,
+                           y = sum,
+                           col = cluster))+
+  xlab("Annual precipitation")+
+  ylab("Drought")+
+    geom_point(data = clim_vals_sites,
+             mapping = aes(x=CHELSA_bio10_12_V1.2,
+                           y = sum),
+             shape=18)
+
+
+ggsave(filename = "figures/site_location_precip_seasonality_v_drought.tif",
+       plot = site_seasonality_vs_drought,
+       device = "tiff",
+       dpi = 300,
+       width = 10,
+       height = 5,
+       units="in")
+
+site_seasonality_vs_drought
+
+```
