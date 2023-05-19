@@ -918,7 +918,8 @@ ggplot(data = k_df_w_climate,
 
 
 #get proposed sites
-proposed_sites <- st_read("data/manual_downloads/proposed_sites/BioSCape_sites_19May2023_NoCentralMountains.kml.kml")
+proposed_sites <- st_read("data/manual_downloads/proposed_sites/BioSCape_sites_19May2023_NoCentralMountains.kml.kml",
+                          quiet=TRUE)
 
 
 #Pull in other bioscape layers
@@ -1018,7 +1019,7 @@ leaflet(data = fynbos_cluster_polys_wgs84) %>%
 #| echo: FALSE
 #| message: false
 #| warning: false
-#| fig-cap: "Fig. 16. Number of different clusters per park"
+#| fig-cap: "Figure 16. Number of different clusters per park"
 #| fig.width: 10
 #| fig.height: 5
 #| strip.white: TRUE
@@ -1110,21 +1111,49 @@ sampling_options %>%
 #| echo: FALSE
 #| message: false
 #| warning: false
-#| fig-cap: "Fig. "
+#| fig-cap: "Figure 17.Proposed vegetation plot locations. Note: Plot locations are also included in Fig. 15. "
 #| fig.width: 10
 #| fig.height: 5
 #| strip.white: TRUE
 
-# Load proposed sites
+library(ggmap)
 
-proposed_sites <- st_read("data/manual_downloads/proposed_sites/BioSCape_sites_19May2023_NoCentralMountains.kml.kml")
+# why in all that is holy would the makers of ggmap not user the standard extent format, or at least include an automated conversion?  Poor design for sure.
 
-ggplot()+
-  geom_sf(data = domain, col = "black")+
-  geom_sf(data = sampling_options,fill="dark grey",col = "dark grey")+
-  geom_sf(data = acceptable_sites, fill="red", col = "red")+
-  geom_sf(data = proposed_sites %>%
-               st_transform(crs = crs(domain)))
+  domain %>%
+    st_transform(crs = "WGS84")%>%
+    ext()%>%
+    as.vector()%>%
+      listr::list_rename("left"=xmin,"bottom"= ymin,"right"=xmax,"top"= ymax) -> bbox
+
+cfr_basemap <- ggmap::get_stamenmap(bbox = bbox[c("left","bottom","right","top")] ,
+                                    zoom = 9,
+                                    messaging = FALSE,
+                                    maptype = 'terrain-background'
+                                    #maptype = 'terrain''
+                                    )
+vegplot_map <-
+ggmap(cfr_basemap)+
+  geom_sf(data=flights %>%
+            st_transform(crs = "WGS84"),
+          inherit.aes = FALSE,
+          col = "white",fill=NA
+          )+
+    geom_sf(data = proposed_sites %>%
+               st_transform(crs = "WGS84"),
+          inherit.aes = FALSE,size=.8)+
+
+  xlab(NULL)+ylab(NULL)
+
+ggsave(filename = "figures/vegplots_map.tif",
+       plot = vegplot_map,
+       device = "tiff",
+       dpi = 300,
+       width = 10,
+       height = 5,
+       units="in")
+
+vegplot_map
 
 
 ```
@@ -1134,7 +1163,7 @@ ggplot()+
 #| echo: FALSE
 #| message: false
 #| warning: false
-#| fig-cap: "Figure. Mean Annual Temperature vs. Mean Annual Precipitation.  Colored dots represent clusters in the focal sites and grey areas represent the entire domain. Black dots represent proposed sampling locations."
+#| fig-cap: "Figure 18. Mean Annual Temperature vs. Mean Annual Precipitation.  Colored dots represent clusters in the focal sites and grey areas represent the entire domain. Black dots represent proposed sampling locations."
 #| fig.width: 10
 #| fig.height: 5
 #| strip.white: TRUE
@@ -1190,7 +1219,7 @@ site_temp_vs_precip
 #| echo: FALSE
 #| message: false
 #| warning: false
-#| fig-cap: "Figure. Precipitation Seasonality vs. Soil Depth.  Colored dots represent clusters in the focal sites and grey areas represent the entire domain. Black dots represent proposed sampling locations."
+#| fig-cap: "Figure 19. Precipitation Seasonality vs. Soil Depth.  Colored dots represent clusters in the focal sites and grey areas represent the entire domain. Black dots represent proposed sampling locations."
 #| fig.width: 10
 #| fig.height: 5
 #| strip.white: TRUE
@@ -1230,7 +1259,7 @@ site_seasonality_vs_soil
 #| echo: FALSE
 #| message: false
 #| warning: false
-#| fig-cap: "Figure 14. Precipitation vs. Drought.  Colored dots represent clusters in the focal sites and grey areas represent the entire domain. Black dots represent proposed sampling locations."
+#| fig-cap: "Figure 20. Precipitation vs. Drought.  Colored dots represent clusters in the focal sites and grey areas represent the entire domain. Black dots represent proposed sampling locations."
 #| fig.width: 10
 #| fig.height: 5
 #| strip.white: TRUE
@@ -1267,3 +1296,60 @@ ggsave(filename = "figures/site_location_precip_seasonality_v_drought.tif",
 site_seasonality_vs_drought
 
 ```
+
+
+```{r,eval=TRUE,echo=FALSE}
+#| echo: FALSE
+#| message: false
+#| warning: false
+#| fig-cap: "Figure 21. Proportional abundance of clusters across the fynbos and the vegetation plots."
+#| fig.width: 10
+#| fig.height: 5
+#| strip.white: TRUE
+
+# Sample distributions across clusters
+
+  plot_cluster_domain <-
+    terra::extract(x = k_raster_domain,
+                   y = vect(st_transform(x = proposed_sites,
+                                         crs = crs(dist_from_water))),
+                   cells=TRUE,
+                   xy=TRUE)%>%
+    dplyr::select(-ID) %>%
+    na.omit() 
+
+  plot_cluster_fynbos <-
+    terra::extract(x = k_raster_fynbos,
+                   y = vect(st_transform(x = proposed_sites,
+                                         crs = crs(dist_from_water))),
+                   cells=TRUE,
+                   xy=TRUE)%>%
+    dplyr::select(-ID) %>%
+    na.omit() 
+  
+  k_df_fynbos %>%
+    group_by(cluster)%>%
+  summarise(total = n())%>%
+  mutate(rel_abund = total/sum(total)*100,
+         Group = 'Fynbos')%>%
+    bind_rows(plot_cluster_fynbos %>%
+                mutate(cluster = as.factor(cluster))%>%
+               group_by(cluster) %>%
+               summarise(total = n()) %>%
+               mutate(rel_abund = total/sum(total)*100,
+                      Group = "Veg. plots"))%>%
+  ggplot(mapping = aes(y=rel_abund,x=cluster,fill=Group))+
+    geom_bar(stat = "identity",
+             alpha=0.5,
+             position = "identity")+
+    ylab("Proportional abundance (percent)")+
+    xlab("Cluster")+
+    scale_fill_manual(name="Group",values=c("grey","darkgreen"),
+                        labels=c("fynbos","vegetation plots"))
+
+  
+  
+
+```
+
+While some of the clusters are over-represented in our sampling (e.g., 11 and 12), others are under represented (e.g., 2, 15, 17). 
