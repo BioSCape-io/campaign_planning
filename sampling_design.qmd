@@ -918,8 +918,12 @@ ggplot(data = k_df_w_climate,
 
 
 #get proposed sites
-proposed_sites <- st_read("data/manual_downloads/proposed_sites/BioSCape_sites_19May2023_NoCentralMountains.kml.kml",
+# proposed_sites <- st_read("data/manual_downloads/proposed_sites/BioSCape_sites_19May2023_NoCentralMountains.kml.kml",
+#                           quiet=TRUE)
+
+proposed_sites <- st_read("data/manual_downloads/proposed_sites/BioSCape_sites_12June2023_merged.kml",
                           quiet=TRUE)
+
 
 
 #Pull in other bioscape layers
