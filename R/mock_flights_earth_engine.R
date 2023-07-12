@@ -17,6 +17,8 @@
 
 # Load in data
   
+    #setwd("campaign_planning/")
+  
   # get domain
     domain <- st_read("data/output/domain.gpkg")
     domain_sf <- domain
@@ -127,7 +129,7 @@
 ###################################################################################################################
   
 # Download table from drive  
-  googledrive::drive_download(file = "EMMA/cloud_stats.csv",
+  googledrive::drive_download(file = "emma/cloud_stats.csv",
                               path = "data/test_cloud_stats.csv",
                               overwrite = TRUE) #note: if dling more than one need to add a prefix or something
   
@@ -178,7 +180,7 @@
       group_by(id, month)%>%
       filter(month != 9)%>%
       summarize(mean_cc = mean(na.omit(mean)))%>%
-      inner_join(x = boxes_sf)%>%
+      inner_join(x = boxes_sf,multiple="all")%>%
       ggplot(mapping = aes(fill = mean_cc))+
       geom_sf()+
       geom_sf(data = domain_sf,
@@ -199,7 +201,7 @@
       summarize(prop_cloud_cover = sum(binary_clouds)/n(),
                 cloud_days = sum(binary_clouds),
                 total_days = n()) %>%
-      inner_join(x = boxes_sf)%>%
+      inner_join(x = boxes_sf,multiple="all")%>%
       ggplot(mapping = aes(fill = prop_cloud_cover))+
       geom_sf()+
       geom_sf(data = domain_sf,inherit.aes = FALSE,fill=NA)+
@@ -217,10 +219,10 @@
       summarize(prop_clear = sum(binary_clear)/n(),
                 clear_days = sum(binary_clear),
                 total_days = n())%>%
-      inner_join(x = boxes_sf)%>%
+      inner_join(x = boxes_sf, multiple="all")%>%
       ggplot(mapping = aes(fill = prop_clear))+
       geom_sf()+
-      geom_sf(data = domain,inherit.aes = FALSE,fill=NA)+
+      geom_sf(data = domain_sf,inherit.aes = FALSE,fill=NA)+
       scale_fill_gradient(low = "white",high = "sky blue",limits=c(0,1))+
       geom_sf_text(aes(label = round(prop_clear,digits = 2)))+
       facet_wrap(~month)
@@ -237,7 +239,7 @@
       inner_join(x = boxes_sf)%>%
       ggplot(mapping = aes(fill = prop_clear))+
       geom_sf()+
-      geom_sf(data = domain,inherit.aes = FALSE,fill=NA)+
+      geom_sf(data = domain_sf,inherit.aes = FALSE,fill=NA)+
       scale_fill_gradient(low = "white",high = "sky blue",limits=c(0,1))+
       geom_sf_text(aes(label = round(prop_clear,digits = 2)))
     
@@ -334,13 +336,12 @@
                           fileFormat = "CSV",
                           selectors = c("id","date","mean","target"))
       
-      
       flat_dl_wind$start()#starts the processing
       ee_monitoring(flat_dl_wind,max_attempts = 100000) #keeps track of progress
 
 #Download wind stats
       
-    googledrive::drive_download(file = "EMMA/wind_stats.csv",
+    googledrive::drive_download(file = "emma/wind_stats.csv",
                                 path = "data/wind_stats.csv",
                                 overwrite = TRUE) #note: if dling more than one need to add a prefix or something
     
@@ -349,14 +350,12 @@
 #Mean wind speed
     
     Map$addLayer(wind_filtered$select("Wind_f_tavg")$mean())
-    
     # should be an average of cloud_sens
     ee_as_raster(image = wind_filtered$select("Wind_f_tavg")$mean(),
                  region = domain_plus_boxes_ee,
                  dsn =  "data/output/mean_wind.tif",
                  scale = 11132)
     
-    library(terra)
     test <- terra::rast("data/output/mean_wind.tif")
     plot(test)    
     
@@ -366,4 +365,5 @@
                  region = domain_plus_boxes_ee,
                  dsn =  "data/output/median_wind_fewsnet.tif",
                  scale = 11132)
+    
     
