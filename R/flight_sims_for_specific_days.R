@@ -14,8 +14,26 @@ library(tidyverse)
 library(lubridate)
 library(sf)
 library(terra)
+library(piggyback)
 
+#Push local era files to a release to make things more reproducible
+  
+  # Create the release
+    # pb_release_create(repo = "BioSCape-io/campaign_planning",
+    #                   tag = "planning_data")
 
+#Upload the era wind data
+  # This .nc file comes from Adam Wilson
+  # pb_upload(file = "data/manual_downloads/flight_planning/adaptor.mars.internal-1666724031.1916814-7142-3-6ad9112b-c8b2-4bdd-a3d4-1a6b593bd447.nc",
+  #           repo = "BioSCape-io/campaign_planning",
+  #           tag = "planning_data")
+
+#Upload the cloud stats
+  #This cloud stats file was downloaded in the script "mock_flights_earth_engine.R"  
+    # pb_upload(file = "data/test_cloud_stats.csv",
+    #           repo = "BioSCape-io/campaign_planning",
+    #           tag = "planning_data")
+  
 
 flight_sim_specific_days <- function(start_day = as_date("2023-10-23"),
                                      end_day = as_date("2023-12-04"),
@@ -24,13 +42,20 @@ flight_sim_specific_days <- function(start_day = as_date("2023-10-23"),
                                      wind_speed_threshold = 0.1,
                                      use_julian = TRUE
                                      ){
+  #Get data
 
+        pb_download(file = "adaptor.mars.internal-1666724031.1916814-7142-3-6ad9112b-c8b2-4bdd-a3d4-1a6b593bd447.nc",
+                    dest = "data/manual_downloads/flight_planning/",
+                    repo = "BioSCape-io/campaign_planning",
+                    tag = "planning_data")
+
+    pb_download(file = "test_cloud_stats.csv",
+                dest = "data/",
+                repo = "BioSCape-io/campaign_planning",
+                tag = "planning_data")
+    
   #Set up
     
-    # Download table from drive (to see the code underlying this or to update the data, see the file "R/mock_flights_earth_engine.R")
-    googledrive::drive_download(file = "EMMA/cloud_stats.csv",
-                                path = "data/test_cloud_stats.csv",
-                                overwrite = TRUE) #note: if dling more than one need to add a prefix or something
     
     cloud_table <- read.csv("data/test_cloud_stats.csv")
     
