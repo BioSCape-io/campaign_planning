@@ -11,7 +11,7 @@
   # rgee::ee_check()
 
 # Initialize rgee
-  rgee::ee_Initialize(drive = TRUE)
+  #see "setup.R"
   
 #####################################################
 
@@ -24,8 +24,9 @@
     domain_sf <- domain
   
   # get flight boxes
-    boxes <- st_read("data/flight_planning/20221026_flightboxes.gpkg")
-    boxes$id <- 1:20 # need a unique ID to make things easier
+    #boxes <- st_read("data/flight_planning/20221026_flightboxes.gpkg")
+    boxes <- st_read("data/flight_planning/v2_20230718_G3_AVIRISNG_PRISM_boxes.gpkg")
+    boxes$id <- 1:nrow(boxes) # need a unique ID to make things easier
     boxes_sf <- boxes
     ee_boxes <- sf_as_ee(x = boxes_sf)
   
@@ -115,9 +116,11 @@
   
 # Download table to drive
 
+  
+  
   flat_dl<-
     ee_table_to_drive(collection = flat_stats,
-                      description = "cloud_stats",
+                      description = paste("cloud_stats",Sys.Date(),sep = "-"),
                       folder = "EMMA",
                       timePrefix = FALSE,
                       fileFormat = "CSV",
@@ -128,8 +131,9 @@
   ee_monitoring(flat_dl,max_attempts = 100000) #keeps track of progress
 ###################################################################################################################
   
+
 # Download table from drive  
-  googledrive::drive_download(file = "emma/cloud_stats.csv",
+  googledrive::drive_download(file =   paste("emma/cloud_stats-",Sys.Date(),".csv",sep = ""),
                               path = "data/test_cloud_stats.csv",
                               overwrite = TRUE) #note: if dling more than one need to add a prefix or something
   

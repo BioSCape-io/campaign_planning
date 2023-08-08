@@ -85,7 +85,7 @@ flight_sim_specific_days <- function(start_day = as_date("2023-10-23"),
   
   # get flight boxes
   
-    boxes <- st_read("data/manual_downloads/BIOSCAPE_proposed/20221026_flightboxes.gpkg") %>%
+    boxes <- st_read("data/flight_planning/v2_20230718_G3_AVIRISNG_PRISM_boxes.gpkg") %>%
       st_transform(crs = crs(era_speed))
     
     boxes$id <- 1:nrow(boxes)
@@ -115,14 +115,14 @@ flight_sim_specific_days <- function(start_day = as_date("2023-10-23"),
     unique() %>%
     inner_join(priorities) -> priorities
 
-  priorities$target <- gsub(pattern = "Terrestrial (coincident aquatic)",
-                            replacement = "Terrestrial",
-                            x =  priorities$target,fixed = TRUE)
+  # priorities$target <- gsub(pattern = "Terrestrial (coincident aquatic)",
+  #                           replacement = "Terrestrial",
+  #                           x =  priorities$target,fixed = TRUE)
 
 
   # aquatic are ranked first by order of wind and cloud cover
     priorities %>%
-      filter(target == "Aquatic")%>%
+      filter(target == "aquatic")%>%
       dplyr::arrange(med_wind, mean_cc) %>%
       mutate(overall_rank =1:n() + 
                (length(unique(priorities$id)) - n())
@@ -130,7 +130,7 @@ flight_sim_specific_days <- function(start_day = as_date("2023-10-23"),
   
   # terrestrial are ranked only by cloud cover
     priorities %>%
-      filter(target == "Terrestrial")%>%
+      filter(target == "terrestrial")%>%
       dplyr::arrange(mean_cc) %>%
       mutate(overall_rank = 1:n())%>% 
       dplyr::bind_rows(aqua_priorities)%>%
@@ -211,7 +211,7 @@ for(i in 1:nrow(start_dates)){
       filter(unix_date == d)%>%
       nrow() -> daily_options
     
-    if(daily_options > 20){stop("Check code")}
+    if(daily_options > nrow(boxes)){stop("Check code")}
     
     # Enforce maximum of 6 consecutive days flying rule
     

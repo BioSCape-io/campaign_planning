@@ -42,20 +42,20 @@ n15 <- flight_sim_specific_days(start_day = as_date("2023-10-13"),
 
 
 d4 %>%
-  filter(!is.na(box_id))%>%
-  group_by(start_date)%>%
+  filter(!is.na(box_id)) %>%
+  group_by(start_date) %>%
   summarise(sites_done = sum(!is.na(box_id)),
             mean_cc = mean(na.omit(mean_cloud_cover)),
             median_wind = median(na.omit(median_wind_speed)),
-            days_taken = max(date)-min(start_date)+1)-> d4_sum
+            days_taken = max(date)-min(start_date)+1) -> d4_sum
 
 n15 %>%
-  filter(!is.na(box_id))%>%
+  filter(!is.na(box_id)) %>%
   group_by(start_date)%>%
   summarise(sites_done = sum(!is.na(box_id)),
             mean_cc = mean(na.omit(mean_cloud_cover)),
             median_wind = median(na.omit(median_wind_speed)),
-            days_taken = max(date)-min(start_date)+1)-> n15_sum
+            days_taken = max(date)-min(start_date)+1) -> n15_sum
 
 ```
 
@@ -73,12 +73,14 @@ n15 %>%
 paste("median" ,median(d4_sum$sites_done)," sites done with a Dec 4 end date")
 paste("median",median(n15_sum$sites_done),"sites done with a Nov 15 end date")
 
+nboxes <- length(na.omit(unique(d4$box_id)))
+
 data.frame(end_date = "Dec. 4",
            d4_sum) %>%
   bind_rows(data.frame(end_date = "Nov. 15",
                        n15_sum)
   ) %>%
-  mutate(pct_done = (sites_done/20)*100) %>%
+  mutate(pct_done = (sites_done/nboxes)*100) %>%
   mutate(end_date = fct_relevel(end_date,c("Nov. 15", "Dec. 4"))) %>%
   ggplot(mapping = aes(x=end_date,y=pct_done))+
   geom_violin()+
@@ -106,8 +108,8 @@ data.frame(end_date = "Dec. 4",
 
 #which plots do we get/miss?
 
-boxes <- st_read("data/flight_planning/20221026_flightboxes.gpkg",quiet=TRUE)
-boxes$id <- 1:20
+boxes <- st_read("data/flight_planning/v2_20230718_G3_AVIRISNG_PRISM_boxes.gpkg",quiet=TRUE)
+boxes$id <- 1:nrow(boxes)
 
 d4%>%
   group_by(box_id)%>%

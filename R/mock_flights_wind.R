@@ -43,7 +43,7 @@ source("R/batch_extract.R")
               filename = "data/output/median_era5_speed.tif")
   
 # get flight boxes
-  boxes <- st_read("data/manual_downloads/BIOSCAPE_proposed/20221026_flightboxes.gpkg") %>%
+  boxes <- st_read("data/flight_planning/v2_20230718_G3_AVIRISNG_PRISM_boxes.gpkg") %>%
             st_transform(crs = crs(era_speed))
 
 # extract the wind speedfor flight boxes  
@@ -159,12 +159,12 @@ era_wind_weighted %>%
 era_wind_weighted$wgt_90pct_wind_speed
 
 
-boxes$ID <- 1:20
+boxes$ID <- 1:nrow(boxes)
 
 era_wind_weighted %>%
-  group_by(ID)%>%
-  summarize(mean_wind_speed = mean(wgt_mean_wind_speed))%>%
-  inner_join(x = boxes)%>%
+  group_by(ID) %>%
+  summarize(mean_wind_speed = mean(wgt_mean_wind_speed)) %>%
+  inner_join(x = boxes) %>%
   ggplot(mapping = aes(fill = mean_wind_speed))+
   geom_sf()+
   geom_sf(data = domain,inherit.aes = FALSE,fill=NA)+

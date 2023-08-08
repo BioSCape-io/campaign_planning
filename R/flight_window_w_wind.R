@@ -60,7 +60,7 @@ library(terra)
 
 # get flight boxes
 
-  boxes <- st_read("data/manual_downloads/BIOSCAPE_proposed/20221026_flightboxes.gpkg") %>%
+  boxes <- st_read("data/flight_planning/v2_20230718_G3_AVIRISNG_PRISM_boxes.gpkg") %>%
     st_transform(crs = crs(era_speed))
   
   boxes$id <- 1:nrow(boxes)
