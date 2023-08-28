@@ -40,7 +40,8 @@ flight_sim_specific_days <- function(start_day = as_date("2023-10-23"),
                                      quality_threshold = 0.05, 
                                      max_wind_speed = 5,
                                      wind_speed_threshold = 0.1,
-                                     use_julian = TRUE
+                                     use_julian = TRUE,
+                                     quiet=TRUE
                                      ){
   #Get data
 
@@ -85,7 +86,7 @@ flight_sim_specific_days <- function(start_day = as_date("2023-10-23"),
   
   # get flight boxes
   
-    boxes <- st_read("data/flight_planning/v2_20230718_G3_AVIRISNG_PRISM_boxes.gpkg") %>%
+    boxes <- st_read("data/flight_planning/v2_20230718_G3_AVIRISNG_PRISM_boxes.gpkg",quiet=quiet) %>%
       st_transform(crs = crs(era_speed))
     
     boxes$id <- 1:nrow(boxes)
@@ -183,7 +184,7 @@ for(i in 1:nrow(start_dates)){
   sampling_start <- start_dates$unix_date[i]
   
   sampling_end <- sampling_start + as.numeric(end_day-start_day)
-  print(sampling_start)
+  if(!quiet){ print(sampling_start) }
   
   # start simulation for the 6 week period
   

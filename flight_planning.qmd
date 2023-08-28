@@ -41,6 +41,8 @@ To assess potential cloud cover during the BioSCape campaign, here we use cloud 
   library(ggpubr)
   library(leafem)
   library(plotly)
+  library(tidyterra)
+
 
 
 
@@ -49,17 +51,37 @@ To assess potential cloud cover during the BioSCape campaign, here we use cloud 
   # get domain
     domain <- st_read("data/output/domain.gpkg",
                       quiet = TRUE)
+
     domain_sf <- domain
   
   # get flight boxes
-    boxes <- st_read("data/flight_planning/20221026_flightboxes.gpkg",
+    boxes <- st_read("data/flight_planning/v2_20230718_G3_AVIRISNG_PRISM_boxes.gpkg",
                      quiet = TRUE)
     
-    boxes$id <- 1:20 # need a unique ID to make things easier
+    boxes$id <- 1:nrow(boxes) # need a unique ID to make things easier
     
-    boxes$ordered_id[c(11,10,15,14,20,18,2,13,17,16,4,1,6,8,3,19,5,9,7,12)] <- 1:20
     
-    boxes_sf <- boxes
+    
+    #need to set up an ordered id.  upper left to lower right
+
+    #we'll order by centroid distance relative to the upper left bounding box of the domain
+
+      boxes %>%
+        st_centroid() -> box_centroids
+      
+      
+      domain%>%
+        st_transform(crs = st_crs(boxes))%>%
+      st_bbox()%>%
+      st_as_sfc() %>%
+        st_cast("POINT") %>%
+        st_as_sf()-> point
+      
+      box_dist <-st_distance(box_centroids, point[4,])
+      
+      boxes$ordered_id[order(box_dist)] <-1:nrow(boxes) 
+
+      boxes_sf <- boxes
     
   # Download table from drive (to see the code underlying this or to update the data, see the file "R/mock_flights_earth_engine.R")
     
@@ -108,68 +130,57 @@ To assess potential cloud cover during the BioSCape campaign, here we use cloud 
   
 # Generate the bounding box used
     domain_plus_boxes <-
-    st_union(domain_sf,boxes_sf) %>%
+    st_union(domain_sf%>%st_transform(crs = st_crs(boxes_sf)), boxes_sf) %>%
       st_bbox() %>%
       st_as_sfc()
 
-
   crs(cloud_examples) <- nasa_proj
+
   
+  ggplot()+
+    geom_spatraster(data = cloud_examples[[1]])+
+  geom_sf(data = domain)
+
   cloud_examples %>%
-    project(y = terra::crs(domain_sf,proj=TRUE)) %>%
+    project(y = terra::crs(domain_plus_boxes,proj=TRUE)) %>%
     crop(y = vect(domain_plus_boxes)) -> cloud_examples
 
 c1 <-  
-cloud_examples[[1]] %>%
-  as.data.frame(xy = TRUE) %>%
-  mutate(clouds = as.logical(state_1km))%>%
-ggplot() +
-  geom_tile(aes(x = x,
-                y = y,
-                fill = clouds))+
-  scale_fill_manual(values = c("light blue","white"))+
-  geom_sf(data = domain_sf,fill=NA)+
-  xlab(NULL)+
-  ylab(NULL)+
-  scale_x_continuous(expand = (c(0,0)))+
-  scale_y_continuous(expand = c(0,0))
+  ggplot()+
+    geom_spatraster(data = cloud_examples[[1]])+
+    scale_fill_gradient(low = "light blue",high = "white")+
+    #scale_fill_manual(values = c("light blue","white"))+
+    scale_x_continuous(expand = (c(0,0)))+
+    scale_y_continuous(expand = c(0,0))+
+    geom_sf(data = domain, fill=NA)+
+    theme(legend.position = "none")
 
 c2 <-  
-cloud_examples[[2]] %>%
-  as.data.frame(xy = TRUE) %>%
-  mutate(clouds = as.logical(state_1km))%>%
-ggplot() +
-  geom_tile(aes(x = x,
-                y = y,
-                fill = clouds))+
-  scale_fill_manual(values = c("light blue","white"))+
-  geom_sf(data = domain_sf,fill=NA)+
-  xlab(NULL)+
-  ylab(NULL)+
-  scale_x_continuous(expand = (c(0,0)))+
-  scale_y_continuous(expand = c(0,0))
+  ggplot()+
+    geom_spatraster(data = cloud_examples[[2]])+
+    scale_fill_gradient(low = "light blue",high = "white")+
+    #scale_fill_manual(values = c("light blue","white"))+
+    scale_x_continuous(expand = (c(0,0)))+
+    scale_y_continuous(expand = c(0,0))+
+    geom_sf(data = domain, fill=NA)+
+    theme(legend.position = "none")
 
 c3 <-  
-cloud_examples[[3]] %>%
-  as.data.frame(xy = TRUE) %>%
-  mutate(clouds = as.logical(state_1km))%>%
-ggplot() +
-  geom_tile(aes(x = x,
-                y = y,
-                fill = clouds))+
-  scale_fill_manual(values = c("light blue","white"))+
-  geom_sf(data = domain_sf,fill=NA)+
-  xlab(NULL)+
-  ylab(NULL)+
-  scale_x_continuous(expand = (c(0,0)))+
-  scale_y_continuous(expand = c(0,0))
+  ggplot()+
+    geom_spatraster(data = cloud_examples[[3]])+
+    scale_fill_gradient(low = "light blue",high = "white")+
+    #scale_fill_manual(values = c("light blue","white"))+
+    scale_x_continuous(expand = (c(0,0)))+
+    scale_y_continuous(expand = c(0,0))+
+    geom_sf(data = domain, fill=NA)+
+    theme(legend.position = "none")
 
 ggarrange(c1,c2,c3,
-          common.legend = TRUE,
+          common.legend = FALSE,
           ncol = 1)
 
-
 ```
+
 
 ### Cloud Cover and Wind Speed
 
@@ -179,15 +190,16 @@ To visualize spatial patterns of cloud cover and wind speed, we calculated the a
 #| echo: true
 #| message: false
 #| warning: false
-#| fig-cap: "Figure 2. Mean cloud cover. Whiter raster cells are cloudier, bluer cells are clearer. Boxes shown are flight boxes, labeled with a unique ID.  Polygons are the requested sampling regions. 'Wind E' = Median Wind Speed from ERA5 data.'Wind F' = Median Wind Speed from FEWSNEWS data"
+#| fig-cap: "Figure 2. Mean cloud cover. Whiter raster cells are cloudier, bluer cells are clearer. Boxes shown are flight boxes, labeled with a unique ID.  Polygons are the requested sampling regions. Wind E = Median Wind Speed from ERA5 data.Wind F = Median Wind Speed from FEWSNEWS data"
 #| out.width: 100%
 #| strip.white: TRUE
 #| code-fold: true
 
 #Pull in other bioscape layers
 
+  flights <-
   boxes_sf %>%
-  st_transform(crs = st_crs(4326)) -> flights
+  st_transform(crs = st_crs(4326)) #-> flights
 
   team_requests <- st_read("data/manual_downloads/BIOSCAPE_proposed/20221014_team_polygons.gpkg",quiet = TRUE) %>%
       st_transform(crs = st_crs(4326))
@@ -367,7 +379,7 @@ era5_wind_table %>%
   ungroup%>%
   mutate(ordered_id = as.factor(ordered_id))%>%
   ggplot(mapping = aes(y=value,x=ordered_id,color=name))+
-  geom_violin()+facet_wrap(~name)
+  geom_violin()+facet_wrap(~name,scales = "free")
 
 
 
@@ -594,8 +606,8 @@ era5_wind_table %>%
   facet_wrap(~ordered_id,nrow = 2)+
   ylab("90th Percentile Wind Speed")+
   geom_hline(yintercept = 5, lty = 2)+
-  scale_color_manual(values = c("Aquatic" = "blue",
-                                "Terrestrial"="brown",
+  scale_color_manual(values = c("aquatic" = "blue",
+                                "terrestrial"="brown",
                                 "Terrestrial (coincident aquatic)"="tan")) +
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
@@ -605,25 +617,25 @@ era5_wind_table %>%
 # Campaign Simulations
 
 
-## Simulations using cloud data only
+<!-- ## Simulations using cloud data only -->
 
-In order to estimate how successful our campaign might be, we conducted a simulation using the MODIS aqua and terra cloud data.
+<!-- In order to estimate how successful our campaign might be, we conducted a simulation using the MODIS aqua and terra cloud data. -->
 
-1) Calculate mean cloud cover for each flight box for each day in the temporal window of interest (October-December, 2000 to present).
+<!-- 1) Calculate mean cloud cover for each flight box for each day in the temporal window of interest (October-December, 2000 to present). -->
 
-2) Rank flight boxes in descending order of cloud cover.
+<!-- 2) Rank flight boxes in descending order of cloud cover. -->
 
-3) For each day in time time series:
+<!-- 3) For each day in time time series: -->
 
-  a) If there are at least 60 days in which to sampling, continue. Else, skip.
-  
-  b) Sample the highest ranking (i.e. hardest to sample) site that is below 5% cloud cover (if any) and hasn't been sampled.
-  
-  c) Repeat b until all sites have been sampled or no more time remains
+<!--   a) If there are at least 60 days in which to sampling, continue. Else, skip. -->
+
+<!--   b) Sample the highest ranking (i.e. hardest to sample) site that is below 5% cloud cover (if any) and hasn't been sampled. -->
+
+<!--   c) Repeat b until all sites have been sampled or no more time remains -->
 
 
 
-```{r campaing time estimate}
+```{r campaing time estimate, eval=FALSE}
 #| echo: true
 #| message: false
 #| warning: false
@@ -698,10 +710,10 @@ In order to estimate how successful our campaign might be, we conducted a simula
     
   c) Repeat b until all sites have been sampled or no more time remains
 
-The underlying code for the analysis is available at: https://github.com/BioSCape-io/terrestrial_sampling/blob/main/R/flight_window_w_wind.R
+The underlying code for the analysis is available at: https://github.com/BioSCape-io/terrestrial_sampling/blob/main/R/flight_sims_for_specific_days.R
 
-```{r campaing time estimate w wind}
-#| echo: true
+```{r campaing time estimate w wind,eval=FALSE}
+#| echo: false
 #| message: false
 #| warning: false
 #| out.width: 100%
@@ -759,3 +771,91 @@ The underlying code for the analysis is available at: https://github.com/BioSCap
 
 ```
 
+```{r campaing time estimate for focal dates}
+#| echo: false
+#| message: false
+#| warning: false
+#| out.width: 100%
+#| strip.white: TRUE
+#| fig.cap: "Figure 7. Estimated length of time needed to finish campaign. The dark grey area represents the 50% CI, the light gray the  90% CI, and the solid line represents the median."
+#| code-fold: true
+#| 
+
+source("R/flight_sims_for_specific_days.R")
+
+sim_output <- flight_sim_specific_days(start_day = as_date("2023-10-13"),
+                                       end_day = as_date("2023-11-27"),
+                                     quality_threshold = 0.05, 
+                                     max_wind_speed = 5,
+                                     wind_speed_threshold = 0.1,
+                                     use_julian = TRUE,
+                                     quiet = TRUE)
+
+sim_output %>%
+  filter(!is.na(box_id)) %>%
+  group_by(start_date) %>%
+  summarise(sites_done = sum(!is.na(box_id)),
+            mean_cc = mean(na.omit(mean_cloud_cover)),
+            median_wind = median(na.omit(median_wind_speed)),
+            days_taken = max(date)-min(start_date)+1) -> sim_output_sum
+
+
+
+nboxes <- length(na.omit(unique(sim_output$box_id)))
+
+sim_output_sum %>%
+  mutate(pct_done = (sites_done/nboxes)*100) %>%
+  ggplot(mapping = aes(y=pct_done,x="all years"))+
+  geom_violin()+
+  geom_boxplot(width=0.1,fill="light grey")+
+  stat_summary(fun.y=mean, geom="point", shape=23, size=2,fill="red")+
+  ylab("Percent of boxes flown")+
+  xlab(NULL)+
+  theme(text = element_text(size = 30))  
+
+
+```
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| out.width: 100%
+#| strip.white: TRUE
+#| fig.cap: "Figure 8. Fraction of campaign simulations in which a given box was flown."
+#| code-fold: true
+
+#which plots do we get/miss?
+
+boxes <- st_read("data/flight_planning/v2_20230718_G3_AVIRISNG_PRISM_boxes.gpkg",quiet=TRUE)
+boxes$id <- 1:nrow(boxes)
+
+sim_output %>%
+  group_by(box_id)%>%
+  summarize(count = n(),
+            fraction = count/10)->d4_box
+
+  boxes %>%
+    inner_join(d4_box,by = c("id" = "box_id"))%>%
+    ggplot()+
+    geom_sf(mapping = aes(fill=fraction))+
+    #scale_fill_continuous(limits=c(0.75,1))+
+    ggtitle("Dec. 4")+
+    theme(text = element_text(size = 30),
+          legend.text = element_text(size = 20) )  ->dplot
+  
+
+  
+# library(ggpmisc)
+# library(ggpubr)  
+# library(patchwork)
+# combined <-  dplot & theme(legend.position = "bottom",
+#                                   axis.text = element_text(size = 20),
+#                                   legend.text = element_text(size = 20),
+#                                   text = element_text(size=20),
+#                                   legend.key.size = unit(x = 2,units = "cm"))
+#+ plot_layout(guides = "collect",ncol = 1)
+
+dplot
+
+```
