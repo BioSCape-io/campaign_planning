@@ -1,15 +1,14 @@
 ---
 title: "Alternate flight timelines"
 author: "Brian Maitner"
-date: "3/30/2023"
+date: "28/8/2023"
 output:
   html_document:
     code_folding: hide
 ---
 
 
-* Option 1: 23 October - 4 December (6 weeks)
-* Option 2: 13 October - 15 November (4.7 weeks)
+* Flight dates: 13 Oct 13 - 27 Nov
 
 ```{r fig one prep}
 #| echo: true
@@ -22,18 +21,8 @@ output:
 
 source("R/flight_sims_for_specific_days.R")
 
-
-
-d4 <- flight_sim_specific_days(start_day = as_date("2023-10-23"),
-                               end_day = as_date("2023-12-04"),
-                               quality_threshold = 0.05, 
-                               max_wind_speed = 5,
-                               wind_speed_threshold = 0.1,
-                               use_julian = TRUE)
-
-
-n15 <- flight_sim_specific_days(start_day = as_date("2023-10-13"),
-                               end_day = as_date("2023-11-15"),
+n27 <- flight_sim_specific_days(start_day = as_date("2023-10-13"),
+                               end_day = as_date("2023-11-27"),
                                quality_threshold = 0.05, 
                                max_wind_speed = 5,
                                wind_speed_threshold = 0.1,
@@ -41,21 +30,14 @@ n15 <- flight_sim_specific_days(start_day = as_date("2023-10-13"),
 
 
 
-d4 %>%
-  filter(!is.na(box_id)) %>%
-  group_by(start_date) %>%
-  summarise(sites_done = sum(!is.na(box_id)),
-            mean_cc = mean(na.omit(mean_cloud_cover)),
-            median_wind = median(na.omit(median_wind_speed)),
-            days_taken = max(date)-min(start_date)+1) -> d4_sum
 
-n15 %>%
+n27 %>%
   filter(!is.na(box_id)) %>%
   group_by(start_date)%>%
   summarise(sites_done = sum(!is.na(box_id)),
             mean_cc = mean(na.omit(mean_cloud_cover)),
             median_wind = median(na.omit(median_wind_speed)),
-            days_taken = max(date)-min(start_date)+1) -> n15_sum
+            days_taken = max(date)-min(start_date)+1) -> n27_sum
 
 ```
 
@@ -63,25 +45,21 @@ n15 %>%
 #| echo: false
 #| message: false
 #| warning: false
-#| fig.cap: "Figure 1. Violin plot showing the distributions of the number of boxes flown for each timeline."
+#| fig.cap: "Figure 1. Violin plot showing the distributions of the percent of boxes flown based on historical data."
 #| fig.width: 20
 #| fig.height: 14
 #| strip.white: TRUE
 #| code-fold: true
 #| code-summary: "Show the code"
 
-paste("median" ,median(d4_sum$sites_done)," sites done with a Dec 4 end date")
-paste("median",median(n15_sum$sites_done),"sites done with a Nov 15 end date")
+paste("median",median(n27_sum$sites_done),"sites done.")
 
-nboxes <- length(na.omit(unique(d4$box_id)))
+nboxes <- length(na.omit(unique(n27$box_id)))
 
-data.frame(end_date = "Dec. 4",
-           d4_sum) %>%
-  bind_rows(data.frame(end_date = "Nov. 15",
-                       n15_sum)
-  ) %>%
+data.frame(end_date = "Nov. 27",
+           n27_sum) %>%
   mutate(pct_done = (sites_done/nboxes)*100) %>%
-  mutate(end_date = fct_relevel(end_date,c("Nov. 15", "Dec. 4"))) %>%
+  mutate(end_date = fct_relevel(end_date,c("Nov. 27"))) %>%
   ggplot(mapping = aes(x=end_date,y=pct_done))+
   geom_violin()+
   geom_boxplot(width=0.1,fill="light grey")+
@@ -111,30 +89,14 @@ data.frame(end_date = "Dec. 4",
 boxes <- st_read("data/flight_planning/v2_20230718_G3_AVIRISNG_PRISM_boxes.gpkg",quiet=TRUE)
 boxes$id <- 1:nrow(boxes)
 
-d4%>%
-  group_by(box_id)%>%
+n27 %>%
+  group_by(box_id) %>%
   summarize(count = n(),
             fraction = count/10) %>%
-    mutate(end_date = "12-04")->d4_box
-
-  n15 %>%
-  group_by(box_id)%>%
-  summarize(count = n(),
-            fraction = count/10)%>%
-            mutate(end_date = "11-15")->n15box
-
+    mutate(end_date = "11-27")->n27_box
 
   boxes %>%
-    inner_join(d4_box,by = c("id" = "box_id"))%>%
-    ggplot()+
-    geom_sf(mapping = aes(fill=fraction))+
-    scale_fill_continuous(limits=c(0.3,1))+
-    ggtitle("Dec. 4")+
-    theme(text = element_text(size = 30),
-          legend.text = element_text(size = 20) )  ->dplot
-  
-  boxes %>%
-    inner_join(n15box,by = c("id" = "box_id"))%>%
+    inner_join(n27_box,by = c("id" = "box_id"))%>%
     ggplot()+
     geom_sf(mapping = aes(fill=fraction))+
     scale_fill_continuous(limits=c(.3,1))+
@@ -150,7 +112,7 @@ library(ggpubr)
   
 
 library(patchwork)
-combined <-  nplot +dplot & theme(legend.position = "bottom",
+combined <-  nplot  & theme(legend.position = "bottom",
                                   axis.text = element_text(size = 20),
                                   legend.text = element_text(size = 20),
                                   text = element_text(size=20),
@@ -158,5 +120,56 @@ combined <-  nplot +dplot & theme(legend.position = "bottom",
 
 combined + plot_layout(guides = "collect",
                        ncol = 1)
+
+```
+```{r update geopackage}
+#| echo: false
+#| message: false
+#| warning: false
+
+# Add fields for cloud frequency and wind to the box geopackage and push that as a release on github
+
+n27 %>%
+  group_by(box_id) %>%
+  summarise(median_wind_speed = median(median_wind_speed),
+            mean_cloud_cover = mean(mean_cloud_cover)) %>%
+  na.omit() -> n27_means
+
+boxes %>%
+    inner_join(n27_means,by = c("id" = "box_id"))-> boxes_w_wind_and_cloud
+
+st_write(obj = boxes_w_wind_and_cloud,
+         dsn = "data/flight_planning/flight_boxes_w_wind_and_cloud.gpkg",
+         append = FALSE,quiet = TRUE)
+
+# pb_upload(file = "data/flight_planning/flight_boxes_w_wind_and_cloud.gpkg",
+#           repo = "BioSCape-io/campaign_planning",
+#           tag = "planning_data")
+
+
+```
+
+
+```{r box_order}
+#| echo: false
+#| message: false
+#| warning: false
+
+#Push a csv of which box was flown in which order (maybe this has [boxid, year, date_flown])? as a github release 
+
+
+n27 %>%
+  mutate(year = year(as_date(date)),
+         date_flown = as_date(date)) %>%
+  select(box_id,year,date_flown) %>%
+  na.omit() -> box_order
+
+write.csv(x = box_order,
+          file = "data/flight_planning/box_flying_order.csv")
+
+# pb_upload(file = "data/flight_planning/box_flying_order.csv",
+#           repo = "BioSCape-io/campaign_planning",
+#           tag = "planning_data")
+
 
 ```
